@@ -21,23 +21,6 @@ function loadTasks(): array
     return $tasks ? $tasks : [];
 }
 
-// this function makes unique id for new tasks
-function generateTaskId(array $tasks): int
-{
-    if (empty($tasks)) {
-        return 1;
-    }
-    
-    $maxId = 0;
-    foreach ($tasks as $task) {
-        if ($task['id'] > $maxId) {
-            $maxId = $task['id'];
-        }
-    }
-    
-    return $maxId + 1;
-}
-
 // Load existing tasks
 $tasks = loadTasks();
 
@@ -50,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $taskText = htmlspecialchars($taskText);
         
         $newTask = [
-            'id' => generateTaskId($tasks),
             'task' => $taskText,
             'done' => false
         ];
@@ -66,13 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Handle toggling task done/undone
     if (isset($_POST['toggle'])) {
-        $taskId = (int)$_POST['toggle'];
+        $taskIndex = (int)$_POST['toggle'];
         
-        for ($i = 0; $i < count($tasks); $i++) {
-            if ($tasks[$i]['id'] === $taskId) {
-                $tasks[$i]['done'] = !$tasks[$i]['done'];
-                break;
-            }
+        // Check if task index exists
+        if (isset($tasks[$taskIndex])) {
+            $tasks[$taskIndex]['done'] = !$tasks[$taskIndex]['done'];
         }
         
         saveTasks($tasks);
@@ -83,13 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Handle deleting a task
     if (isset($_POST['delete'])) {
-        $taskId = (int)$_POST['delete'];
+        $taskIndex = (int)$_POST['delete'];
         
-        $tasks = array_filter($tasks, function($task) use ($taskId) {
-            return $task['id'] !== $taskId;
-        });
-        
-        $tasks = array_values($tasks);
+        // Check if task index exists and remove it
+        if (isset($tasks[$taskIndex])) {
+            unset($tasks[$taskIndex]);
+            $tasks = array_values($tasks); // Re-index array
+        }
         
         saveTasks($tasks);
         
@@ -163,10 +143,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if (empty($tasks)): ?>
                     <li>No tasks yet. Add one above!</li>
                 <?php else: ?>
-                    <?php foreach ($tasks as $task): ?>
+                    <?php foreach ($tasks as $index => $task): ?>
                         <li class="task-item">
                             <form method="POST" style="flex-grow: 1;">
-                                <input type="hidden" name="toggle" value="<?php echo $task['id']; ?>">
+                                <input type="hidden" name="toggle" value="<?php echo $index; ?>">
                                 <button type="submit" style="border: none; background: none; cursor: pointer; text-align: left; width: 100%;">
                                     <span class="<?php echo $task['done'] ? 'task-done' : 'task'; ?>">
                                         <?php echo $task['task']; ?>
@@ -175,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </form>
 
                             <form method="POST">
-                                <input type="hidden" name="delete" value="<?php echo $task['id']; ?>">
+                                <input type="hidden" name="delete" value="<?php echo $index; ?>">
                                 <button type="submit" class="button button-outline" style="margin-left: 10px;">Delete</button>
                             </form>
                         </li>
